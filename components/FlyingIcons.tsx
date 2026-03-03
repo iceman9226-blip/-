@@ -70,21 +70,18 @@ const generateParticles = (count: number, startId: number): Particle[] => {
 
 const FlyingIcons: React.FC = () => {
   const [particles, setParticles] = useState<Particle[]>([]);
-  const [particleIdCounter, setParticleIdCounter] = useState(0);
 
   useEffect(() => {
     // Initial batch
     setParticles(generateParticles(6, 0));
-    setParticleIdCounter(6);
+    let currentId = 6;
 
     // Periodically add new particles and remove old ones
     const interval = setInterval(() => {
-      setParticleIdCounter(prevId => {
-        setParticles(prev => {
-          const newParticles = generateParticles(4, prevId);
-          return [...prev.slice(-12), ...newParticles];
-        });
-        return prevId + 4;
+      const newParticles = generateParticles(4, currentId);
+      currentId += 4;
+      setParticles(prev => {
+        return [...prev.slice(-12), ...newParticles];
       });
     }, 800);
 
