@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Upload, FileImage, FileType2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useToast } from './Toast';
 
 interface FileUploadProps {
   onFileSelect: (base64: string, preview: string, sourceUrl: string | undefined, mimeType: string) => void;
@@ -10,8 +11,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, isAnalyzing }) =>
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
 
   // Handle Paste Event (Ctrl+V)
   useEffect(() => {
@@ -44,18 +45,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, isAnalyzing }) =>
   };
 
   const processFile = (file: File) => {
-    setErrorMsg(null);
-    
     // Support more formats
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!validTypes.includes(file.type)) {
-      setErrorMsg("不支持的文件格式。请上传 JPG, PNG, WEBP 或 GIF 格式的图片。");
+      showToast("不支持的文件格式。请上传 JPG, PNG, WEBP 或 GIF 格式的图片。", "error");
       return;
     }
 
     // Check file size (e.g., max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      setErrorMsg("文件过大。请上传小于 10MB 的图片。");
+      showToast("文件过大。请上传小于 10MB 的图片。", "error");
       return;
     }
 
@@ -202,14 +201,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, isAnalyzing }) =>
                   style={{ width: `${uploadProgress}%` }}
                 ></div>
               </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {errorMsg && (
-            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg mt-4 animate-in fade-in slide-in-from-bottom-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
             </div>
           )}
         </div>

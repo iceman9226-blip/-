@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Mail, Lock, User as UserIcon, ArrowRight, Loader2 } from 'lucide-react';
 import { authService } from '../services/authService';
 import { User } from '../types';
+import { useToast } from './Toast';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
 
+  const { showToast } = useToast();
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,13 +32,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }
       let user: User;
       if (isRegister) {
         user = await authService.register(email, password, name || email.split('@')[0]);
+        showToast("注册成功并已登录", "success");
       } else {
         user = await authService.login(email, password);
+        showToast("登录成功", "success");
       }
       onLoginSuccess(user);
       onClose();
     } catch (err: any) {
       setError(err.message || "操作失败");
+      showToast(err.message || "操作失败", "error");
     } finally {
       setIsLoading(false);
     }

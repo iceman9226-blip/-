@@ -9,6 +9,7 @@ import HelpView from "./components/HelpView";
 import ChatBot from "./components/ChatBot";
 import FlyingIcons from "./components/FlyingIcons";
 import { authService } from "./services/authService";
+import { useToast } from "./components/Toast";
 import {
   Layout,
   Sparkles,
@@ -49,6 +50,8 @@ const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
+  const { showToast } = useToast();
+
   // Initialize Auth
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
@@ -78,14 +81,18 @@ const App: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           setHistory(data);
+        } else {
+          const err = await response.json();
+          showToast(err.error || "加载历史记录失败", "error");
         }
       } catch (e) {
         console.error("Failed to load history", e);
+        showToast("加载历史记录失败，请检查网络", "error");
       }
     };
 
     fetchHistory();
-  }, [user]); // Re-run when user changes
+  }, [user, showToast]); // Re-run when user changes
 
   useEffect(() => {
     if (result) setReportTitle(result.title || "分析报告");
@@ -118,9 +125,13 @@ const App: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setHistory([data.item, ...history]);
+      } else {
+        const err = await response.json();
+        showToast(err.error || "保存历史记录失败", "error");
       }
     } catch (e) {
       console.error("Failed to save history", e);
+      showToast("保存历史记录失败，请检查网络", "error");
     }
   };
 
@@ -131,6 +142,7 @@ const App: React.FC = () => {
       const updated = history.filter((item) => item.id !== id);
       setHistory(updated);
       localStorage.setItem("pem_history_guest", JSON.stringify(updated));
+      showToast("记录已删除", "success");
       return;
     }
 
@@ -141,9 +153,14 @@ const App: React.FC = () => {
       });
       if (response.ok) {
         setHistory(history.filter((item) => item.id !== id));
+        showToast("记录已删除", "success");
+      } else {
+        const err = await response.json();
+        showToast(err.error || "删除记录失败", "error");
       }
     } catch (e) {
       console.error("Failed to delete history", e);
+      showToast("删除记录失败，请检查网络", "error");
     }
   };
 
@@ -182,10 +199,11 @@ const App: React.FC = () => {
         setResult(data);
         saveToHistory(data, previewUrl);
         setView("result");
+        showToast("分析完成", "success");
       }, 500);
     } catch (error: any) {
       clearInterval(interval);
-      alert(error.message || "分析失败，请稍后重试。");
+      showToast(error.message || "分析失败，请稍后重试。", "error");
       setPreview(null);
       setView("home");
     }
@@ -196,6 +214,7 @@ const App: React.FC = () => {
     setUser(null);
     setIsUserMenuOpen(false);
     setView("home");
+    showToast("已退出登录", "info");
   };
 
   return (
