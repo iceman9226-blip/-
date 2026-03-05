@@ -121,14 +121,14 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, isAnalyzing }) =>
       img.onerror = () => {
         clearInterval(progressInterval);
         setIsUploading(false);
-        setErrorMsg("读取图片失败，请重试。");
+        showToast("读取图片失败，请重试。", "error");
       };
       img.src = result;
     };
     reader.onerror = () => {
       clearInterval(progressInterval);
       setIsUploading(false);
-      setErrorMsg("读取文件失败，请重试。");
+      showToast("读取文件失败，请重试。", "error");
     };
     reader.readAsDataURL(file);
   };
