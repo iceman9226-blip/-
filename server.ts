@@ -1,3 +1,4 @@
+import "dotenv/config";
 import app from "./src/api";
 import { createServer as createViteServer } from "vite";
 

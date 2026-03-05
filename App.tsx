@@ -61,9 +61,13 @@ const App: React.FC = () => {
   };
 
   const handleApiError = (err: any) => {
-    if (err.status === 401 || err.message === "Unauthorized") {
+    if (err.status === 401 || err.message?.includes("Unauthorized")) {
       handleLogout();
       showToast("会话已过期，请重新登录", "error");
+      return true;
+    }
+    if (err.status === 500 && err.supabaseError) {
+      showToast(`数据库错误: ${err.supabaseError}`, "error");
       return true;
     }
     return false;
@@ -126,9 +130,8 @@ const App: React.FC = () => {
     };
 
     if (!user) {
-      const updatedHistory = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS);
-      setHistory(updatedHistory);
-      localStorage.setItem("pem_history_guest", JSON.stringify(updatedHistory));
+      setHistory(prev => [newItem, ...prev].slice(0, MAX_HISTORY_ITEMS));
+      localStorage.setItem("pem_history_guest", JSON.stringify([newItem, ...history].slice(0, MAX_HISTORY_ITEMS)));
       return;
     }
 
@@ -143,7 +146,7 @@ const App: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setHistory([data.item, ...history]);
+        setHistory(prev => [data.item, ...prev]);
       } else {
         const err = await response.json();
         if (!handleApiError({ status: response.status, message: err.error })) {

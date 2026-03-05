@@ -7,15 +7,20 @@ const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_A
 
 // 安全初始化 Supabase
 let supabase: any = null;
+console.log("Initializing Supabase...");
+console.log("URL defined:", !!supabaseUrl);
+console.log("Key defined:", !!supabaseKey);
+
 if (supabaseUrl && supabaseKey) {
   try {
-    // 简单的 URL 合法性检查
     new URL(supabaseUrl);
     supabase = createClient(supabaseUrl, supabaseKey);
-    console.log("Supabase initialized successfully");
+    console.log("Supabase client created");
   } catch (e) {
-    console.error("Supabase initialization failed: Invalid URL", supabaseUrl);
+    console.error("Supabase initialization failed:", e);
   }
+} else {
+  console.log("Supabase credentials missing, falling back to memory storage");
 }
 
 const memoryUsers: User[] = [
@@ -32,6 +37,17 @@ const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
 };
 
 // --- API Routes ---
+
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    supabase: !!supabase,
+    env: {
+      url: !!process.env.SUPABASE_URL,
+      key: !!process.env.SUPABASE_ANON_KEY
+    }
+  });
+});
 
 app.post("/api/login", asyncHandler(async (req: any, res: any) => {
   const { email, name } = req.body;
@@ -95,12 +111,29 @@ app.post("/api/history", asyncHandler(async (req: any, res: any) => {
   if (!userId) return res.status(401).json({ error: "Unauthorized: Missing User ID" });
 
   if (supabase) {
-    const { data: user } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+    const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+    if (userError) {
+      console.error("Supabase User Fetch Error:", userError);
+      throw userError;
+    }
     if (!user) return res.status(401).json({ error: "Unauthorized: User not found in database" });
 
-    const newItem = { ...req.body, userId: user.id, userName: user.name };
+    // Ensure we have a valid item to insert
+    const newItem = { 
+      ...req.body, 
+      userId: user.id, 
+      userName: user.name 
+    };
+
+    console.log("Inserting history item for user:", user.id);
     const { data, error } = await supabase.from('history').insert([newItem]).select().single();
-    if (error) throw error;
+    
+    if (error) {
+      console.error("Supabase History Insert Error:", error);
+      // If table doesn't exist, this will be caught here
+      throw error;
+    }
+    
     return res.json({ success: true, item: data });
   } else {
     const user = memoryUsers.find((u) => u.id === userId);
