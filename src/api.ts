@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { HistoryItem, User } from "../types";
 import { createClient } from '@supabase/supabase-js';
@@ -114,13 +115,18 @@ app.post("/api/history", asyncHandler(async (req: any, res: any) => {
     const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
     if (userError) {
       console.error("Supabase User Fetch Error:", userError);
-      throw userError;
+      return res.status(500).json({ error: "Database error fetching user", details: userError });
     }
     if (!user) return res.status(401).json({ error: "Unauthorized: User not found in database" });
 
-    // Ensure we have a valid item to insert
+    // Map camelCase to lowercase for better Postgres compatibility if needed
+    // However, if the user used the provided SQL with double quotes, camelCase is required.
+    // We'll stick to the provided schema but add more logging.
+    const { id, previewUrl, ...rest } = req.body;
     const newItem = { 
-      ...req.body, 
+      id: id || Date.now().toString(),
+      previewUrl: previewUrl, // Matches "previewUrl" in SQL
+      ...rest, 
       userId: user.id, 
       userName: user.name 
     };
@@ -130,8 +136,12 @@ app.post("/api/history", asyncHandler(async (req: any, res: any) => {
     
     if (error) {
       console.error("Supabase History Insert Error:", error);
-      // If table doesn't exist, this will be caught here
-      throw error;
+      // Return the error details to the client for debugging
+      return res.status(500).json({ 
+        error: "Failed to save history to database", 
+        supabaseError: error.message,
+        details: error 
+      });
     }
     
     return res.json({ success: true, item: data });
