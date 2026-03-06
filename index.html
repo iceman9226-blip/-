@@ -65,9 +65,13 @@
           opacity: 1; 
           transform: translate(calc(var(--tx) * 0.5 + var(--px)), calc(var(--ty) * 0.5 + var(--py))) scale(1.0) rotate(calc(var(--rot) * 0.5)); 
         }
-        75% { 
-          opacity: 1; 
-          transform: translate(calc(var(--tx) * 0.2 + var(--px) * 0.5), calc(var(--ty) * 0.2 + var(--py) * 0.5)) scale(0.9) rotate(calc(var(--rot) * 0.2)); 
+        50% {
+          opacity: 1;
+          transform: translate(calc(var(--tx) * 0.4 + var(--px) * 0.8), calc(var(--ty) * 0.4 + var(--py) * 0.8)) scale(0.95) rotate(calc(var(--rot) * 0.4));
+        }
+        80% { 
+          opacity: 0; 
+          transform: translate(calc(var(--tx) * 0.15 + var(--px) * 0.3), calc(var(--ty) * 0.15 + var(--py) * 0.3)) scale(0.6) rotate(calc(var(--rot) * 0.15)); 
         }
         100% { 
           opacity: 0; 
