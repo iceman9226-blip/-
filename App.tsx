@@ -104,7 +104,7 @@ const App: React.FC = () => {
           setHistory(data);
         } else {
           const err = await response.json();
-          if (!handleApiError({ status: response.status, message: err.error })) {
+          if (!handleApiError({ status: response.status, ...err })) {
             showToast(err.error || "加载历史记录失败", "error");
           }
         }
@@ -149,7 +149,7 @@ const App: React.FC = () => {
         setHistory(prev => [data.item, ...prev]);
       } else {
         const err = await response.json();
-        if (!handleApiError({ status: response.status, message: err.error })) {
+        if (!handleApiError({ status: response.status, ...err })) {
           showToast(err.error || "保存历史记录失败", "error");
         }
       }
@@ -180,7 +180,7 @@ const App: React.FC = () => {
         showToast("记录已删除", "success");
       } else {
         const err = await response.json();
-        if (!handleApiError({ status: response.status, message: err.error })) {
+        if (!handleApiError({ status: response.status, ...err })) {
           showToast(err.error || "删除记录失败", "error");
         }
       }

@@ -115,7 +115,7 @@ app.post("/api/history", asyncHandler(async (req: any, res: any) => {
     const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
     if (userError) {
       console.error("Supabase User Fetch Error:", userError);
-      return res.status(500).json({ error: "Database error fetching user", details: userError });
+      return res.status(500).json({ error: "Database error fetching user", details: userError.message });
     }
     if (!user) return res.status(401).json({ error: "Unauthorized: User not found in database" });
 
@@ -140,7 +140,7 @@ app.post("/api/history", asyncHandler(async (req: any, res: any) => {
       return res.status(500).json({ 
         error: "Failed to save history to database", 
         supabaseError: error.message,
-        details: error 
+        details: error.details || error.hint || "Unknown error"
       });
     }
     
@@ -190,8 +190,8 @@ app.delete("/api/history/:id", asyncHandler(async (req: any, res: any) => {
 app.use((err: any, req: any, res: any, next: any) => {
   console.error("API Error:", err);
   res.status(500).json({ 
-    error: "Internal Server Error", 
-    details: err.message,
+    error: err.message || "Internal Server Error", 
+    details: err.stack,
     supabaseError: err.details || err.hint
   });
 });
