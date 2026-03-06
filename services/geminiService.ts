@@ -25,7 +25,7 @@ export const analyzeImage = async (base64Image: string, mimeType: string, source
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.1-pro-preview',
       contents: {
         parts: [
           { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64Image } },
@@ -219,7 +219,7 @@ export const sendChatMessage = async function* (
   });
 
   const responseStream = await ai.models.generateContentStream({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.1-pro-preview',
     contents,
     config: {
       systemInstruction,
