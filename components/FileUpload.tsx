@@ -75,55 +75,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, isAnalyzing }) =>
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
+      const base64 = result.split(',')[1];
       
-      // Resize image to prevent payload too large errors
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const MAX_DIMENSION = 1600;
-
-        if (width > height && width > MAX_DIMENSION) {
-          height *= MAX_DIMENSION / width;
-          width = MAX_DIMENSION;
-        } else if (height > MAX_DIMENSION) {
-          width *= MAX_DIMENSION / height;
-          height = MAX_DIMENSION;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-          const base64 = resizedDataUrl.split(',')[1];
-          
-          clearInterval(progressInterval);
-          setUploadProgress(100);
-          
-          setTimeout(() => {
-            setIsUploading(false);
-            onFileSelect(base64, resizedDataUrl, undefined, 'image/jpeg');
-          }, 300);
-        } else {
-          // Fallback if canvas fails
-          const base64 = result.split(',')[1];
-          clearInterval(progressInterval);
-          setUploadProgress(100);
-          setTimeout(() => {
-            setIsUploading(false);
-            onFileSelect(base64, result, undefined, file.type);
-          }, 300);
-        }
-      };
-      img.onerror = () => {
-        clearInterval(progressInterval);
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      setTimeout(() => {
         setIsUploading(false);
-        showToast("读取图片失败，请重试。", "error");
-      };
-      img.src = result;
+        onFileSelect(base64, result, undefined, file.type);
+      }, 300);
     };
     reader.onerror = () => {
       clearInterval(progressInterval);

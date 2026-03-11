@@ -25,7 +25,7 @@ export const analyzeImage = async (base64Image: string, mimeType: string, source
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.1-pro-preview',
       contents: {
         parts: [
           { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64Image } },
@@ -222,19 +222,46 @@ export const sendChatMessage = async function* (
     parts: [{ text: message }]
   });
 
-  const responseStream = await ai.models.generateContentStream({
-    model: 'gemini-2.5-flash',
-    contents,
-    config: {
-      systemInstruction,
-      temperature: 0.7,
-    }
-  });
+  try {
+    const responseStream = await ai.models.generateContentStream({
+      model: 'gemini-3.1-pro-preview',
+      contents,
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+      }
+    });
 
-  for await (const chunk of responseStream) {
-    const c = chunk as any;
-    if (c.text) {
-      yield c.text;
+    for await (const chunk of responseStream) {
+      const c = chunk as any;
+      if (c.text) {
+        yield c.text;
+      }
     }
+  } catch (error: any) {
+    console.error("Chat Analysis Failed:", error);
+    const msg = error.message || "";
+    const strError = JSON.stringify(error);
+
+    if (msg.includes("API Key is missing")) {
+        throw new Error("API Key 缺失，请检查环境变量配置。");
+    }
+    if (msg.includes("Region not supported") || strError.includes("Region not supported")) {
+        throw new Error("当前地区不支持访问 Gemini API (403)。请开启 VPN (推荐美国/新加坡节点) 后重试。");
+    }
+    if (msg.includes("403") || (error.status === 403)) {
+         throw new Error("访问被拒绝 (403)。可能是 API Key 无效或当前地区受限。");
+    }
+    if (msg.includes("503")) {
+        throw new Error("服务暂时不可用 (503)。请稍后重试。");
+    }
+    if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || strError.includes("429")) {
+        throw new Error("API 额度已耗尽或模型受限 (429)。当前 API Key 的免费额度已用完，请稍后再试或绑定结算账号。");
+    }
+    if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+        throw new Error("网络连接失败。如果您在中国大陆，请确保已开启全局代理或配置了正确的路由规则以访问 Google 服务。");
+    }
+
+    throw new Error(`对话失败: ${msg || "未知错误，请检查网络连接或控制台日志。"}`);
   }
 };

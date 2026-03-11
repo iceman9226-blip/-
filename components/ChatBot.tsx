@@ -70,10 +70,16 @@ const ChatBot: React.FC<ChatBotProps> = ({ base64Image, mimeType, analysisResult
 
     } catch (error: any) {
       console.error("Chat error:", error);
-      setMessages(prev => [
-        ...prev, 
-        { role: 'model', text: `**Error:** ${error.message || 'Failed to get response.'}` }
-      ]);
+      setMessages(prev => {
+        const newMessages = [...prev];
+        // If the last message was the empty model message, replace it
+        if (newMessages[newMessages.length - 1].role === 'model' && newMessages[newMessages.length - 1].text === '') {
+          newMessages[newMessages.length - 1].text = `**出错了：** ${error.message || '获取回复失败，请稍后重试。'}`;
+        } else {
+          newMessages.push({ role: 'model', text: `**出错了：** ${error.message || '获取回复失败，请稍后重试。'}` });
+        }
+        return newMessages;
+      });
     } finally {
       setIsLoading(false);
     }
