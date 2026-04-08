@@ -16,7 +16,7 @@ const getRatingLevel = (score: number) => {
   return '较差';
 };
 
-export const analyzeImage = async (base64Image: string, mimeType: string, sourceUrl?: string): Promise<AnalysisResult> => {
+export const analyzeImage = async (base64Image: string, mimeType: string, sourceUrl?: string, userDescription?: string): Promise<AnalysisResult> => {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("API Key is missing");
   }
@@ -29,7 +29,7 @@ export const analyzeImage = async (base64Image: string, mimeType: string, source
       contents: {
         parts: [
           { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64Image } },
-          { text: SYSTEM_PROMPT }
+          { text: SYSTEM_PROMPT + (userDescription ? `\n\n用户提供的背景描述: ${userDescription}` : "") }
         ]
       },
       config: {

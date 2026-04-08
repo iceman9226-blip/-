@@ -19,13 +19,27 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 let supabase: any = null;
-if (supabaseUrl && supabaseKey) {
-  try {
-    supabase = createClient(supabaseUrl, supabaseKey);
-  } catch (e) {
-    console.error("Supabase Init Error:", e);
+
+const initSupabase = async () => {
+  if (supabaseUrl && supabaseKey) {
+    try {
+      const client = createClient(supabaseUrl, supabaseKey);
+      // 测试连接
+      const { error } = await client.from('users').select('count', { count: 'exact', head: true }).limit(1);
+      if (error) {
+        console.error("Supabase connection test failed:", error.message);
+        supabase = null;
+      } else {
+        supabase = client;
+      }
+    } catch (e) {
+      console.error("Supabase Init Error:", e);
+      supabase = null;
+    }
   }
-}
+};
+
+initSupabase();
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
@@ -60,51 +74,60 @@ app.post("/api/login", async (req: any, res: any) => {
     if (!email) return res.status(400).json({ error: "Email is required" });
 
     if (supabase) {
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
-        
-      if (error) throw error;
-
-      if (user) {
-        return res.json({ success: true, user });
-      } else {
-        // 自动注册 - 手动生成 ID 以满足数据库非空约束
-        const newUser = {
-          id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
-          email,
-          name: name || email.split('@')[0],
-          role: email === 'iceman9226@gmail.com' ? 'admin' : 'user',
-        };
-        
-        const { data, error: insertError } = await supabase
+      try {
+        const { data: user, error } = await supabase
           .from('users')
-          .insert([newUser])
-          .select()
-          .single();
+          .select('*')
+          .eq('email', email)
+          .maybeSingle();
           
-        if (insertError) throw insertError;
-        return res.json({ success: true, user: data });
+        if (error) throw error;
+
+        if (user) {
+          return res.json({ success: true, user });
+        } else {
+          // 自动注册 - 手动生成 ID 以满足数据库非空约束
+          const newUser = {
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
+            email,
+            name: name || email.split('@')[0],
+            role: email === 'iceman9226@gmail.com' ? 'admin' : 'user',
+          };
+          
+          const { data, error: insertError } = await supabase
+            .from('users')
+            .insert([newUser])
+            .select()
+            .single();
+            
+          if (insertError) throw insertError;
+          return res.json({ success: true, user: data });
+        }
+      } catch (dbError) {
+        console.error("Supabase Login Error, falling back to memory:", dbError);
+        return handleMemoryLogin(email, name, res);
       }
     } else {
-      const user = memoryUsers.find((u) => u.email === email);
-      if (user) return res.json({ success: true, user });
-      
-      const newUser: User = {
-        id: Date.now().toString(),
-        email,
-        name: name || email.split('@')[0],
-        role: email === 'iceman9226@gmail.com' ? 'admin' : 'user',
-      };
-      memoryUsers.push(newUser);
-      return res.json({ success: true, user: newUser });
+      return handleMemoryLogin(email, name, res);
     }
   } catch (err) {
     sendError(res, err, "Login/Register");
   }
 });
+
+function handleMemoryLogin(email: string, name: string, res: any) {
+  const user = memoryUsers.find((u) => u.email === email);
+  if (user) return res.json({ success: true, user });
+  
+  const newUser: User = {
+    id: Date.now().toString(),
+    email,
+    name: name || email.split('@')[0],
+    role: email === 'iceman9226@gmail.com' ? 'admin' : 'user',
+  };
+  memoryUsers.push(newUser);
+  return res.json({ success: true, user: newUser });
+}
 
 // 获取历史
 app.get("/api/history", async (req: any, res: any) => {
