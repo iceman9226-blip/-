@@ -136,28 +136,37 @@ app.get("/api/history", async (req: any, res: any) => {
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
     if (supabase) {
-      const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
-      if (userError) throw userError;
-      if (!user) return res.status(401).json({ error: "User not found" });
+      try {
+        const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+        if (userError) throw userError;
+        if (!user) return res.status(401).json({ error: "User not found" });
 
-      let query = supabase.from('history').select('*').order('timestamp', { ascending: false });
-      if (user.role !== 'admin') {
-        query = query.eq('userId', userId);
+        let query = supabase.from('history').select('*').order('timestamp', { ascending: false });
+        if (user.role !== 'admin') {
+          query = query.eq('userId', userId);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        return res.json(data);
+      } catch (dbError: any) {
+        console.error("Supabase Get History Error, falling back to memory:", dbError.message);
+        return handleMemoryGetHistory(userId, res);
       }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return res.json(data);
     } else {
-      const user = memoryUsers.find((u) => u.id === userId);
-      if (!user) return res.status(401).json({ error: "Unauthorized" });
-      const data = user.role === "admin" ? memoryHistoryDb : memoryHistoryDb.filter((h) => h.userId === userId);
-      return res.json([...data].sort((a, b) => b.timestamp - a.timestamp));
+      return handleMemoryGetHistory(userId, res);
     }
   } catch (err) {
     sendError(res, err, "Get History");
   }
 });
+
+function handleMemoryGetHistory(userId: string, res: any) {
+  const user = memoryUsers.find((u) => u.id === userId);
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+  const data = user.role === "admin" ? memoryHistoryDb : memoryHistoryDb.filter((h) => h.userId === userId);
+  return res.json([...data].sort((a, b) => b.timestamp - a.timestamp));
+}
 
 // 添加历史
 app.post("/api/history", async (req: any, res: any) => {
@@ -166,33 +175,42 @@ app.post("/api/history", async (req: any, res: any) => {
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
     if (supabase) {
-      const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
-      if (userError) throw userError;
-      if (!user) return res.status(401).json({ error: "User not found" });
+      try {
+        const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+        if (userError) throw userError;
+        if (!user) return res.status(401).json({ error: "User not found" });
 
-      const { id, previewUrl, ...rest } = req.body;
-      const newItem = { 
-        id: id || Date.now().toString(),
-        previewUrl: previewUrl,
-        ...rest, 
-        userId: user.id, 
-        userName: user.name 
-      };
+        const { id, previewUrl, ...rest } = req.body;
+        const newItem = { 
+          id: id || Date.now().toString(),
+          previewUrl: previewUrl,
+          ...rest, 
+          userId: user.id, 
+          userName: user.name 
+        };
 
-      const { data, error } = await supabase.from('history').insert([newItem]).select().single();
-      if (error) throw error;
-      return res.json({ success: true, item: data });
+        const { data, error } = await supabase.from('history').insert([newItem]).select().single();
+        if (error) throw error;
+        return res.json({ success: true, item: data });
+      } catch (dbError: any) {
+        console.error("Supabase Post History Error, falling back to memory:", dbError.message);
+        return handleMemoryPostHistory(userId, req.body, res);
+      }
     } else {
-      const user = memoryUsers.find((u) => u.id === userId);
-      if (!user) return res.status(401).json({ error: "Unauthorized" });
-      const newItem = { ...req.body, userId: user.id, userName: user.name };
-      memoryHistoryDb.push(newItem);
-      return res.json({ success: true, item: newItem });
+      return handleMemoryPostHistory(userId, req.body, res);
     }
   } catch (err) {
     sendError(res, err, "Add History");
   }
 });
+
+function handleMemoryPostHistory(userId: string, body: any, res: any) {
+  const user = memoryUsers.find((u) => u.id === userId);
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+  const newItem = { ...body, userId: user.id, userName: user.name };
+  memoryHistoryDb.push(newItem);
+  return res.json({ success: true, item: newItem });
+}
 
 // 删除历史
 app.delete("/api/history/:id", async (req: any, res: any) => {
@@ -202,34 +220,43 @@ app.delete("/api/history/:id", async (req: any, res: any) => {
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
     if (supabase) {
-      const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
-      if (userError) throw userError;
-      if (!user) return res.status(401).json({ error: "User not found" });
+      try {
+        const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+        if (userError) throw userError;
+        if (!user) return res.status(401).json({ error: "User not found" });
 
-      const { data: item, error: itemError } = await supabase.from('history').select('*').eq('id', id).maybeSingle();
-      if (itemError) throw itemError;
-      if (!item) return res.status(404).json({ error: "Item not found" });
+        const { data: item, error: itemError } = await supabase.from('history').select('*').eq('id', id).maybeSingle();
+        if (itemError) throw itemError;
+        if (!item) return res.status(404).json({ error: "Item not found" });
 
-      if (user.role === "admin" || item.userId === user.id) {
-        const { error } = await supabase.from('history').delete().eq('id', id);
-        if (error) throw error;
-        return res.json({ success: true });
+        if (user.role === "admin" || item.userId === user.id) {
+          const { error } = await supabase.from('history').delete().eq('id', id);
+          if (error) throw error;
+          return res.json({ success: true });
+        }
+        return res.status(403).json({ error: "Forbidden" });
+      } catch (dbError: any) {
+        console.error("Supabase Delete History Error, falling back to memory:", dbError.message);
+        return handleMemoryDeleteHistory(userId, id, res);
       }
-      return res.status(403).json({ error: "Forbidden" });
     } else {
-      const user = memoryUsers.find((u) => u.id === userId);
-      if (!user) return res.status(401).json({ error: "Unauthorized" });
-      const index = memoryHistoryDb.findIndex(h => h.id === id);
-      if (index === -1) return res.status(404).json({ error: "Not found" });
-      if (user.role === "admin" || memoryHistoryDb[index].userId === userId) {
-        memoryHistoryDb.splice(index, 1);
-        return res.json({ success: true });
-      }
-      return res.status(403).json({ error: "Forbidden" });
+      return handleMemoryDeleteHistory(userId, id, res);
     }
   } catch (err) {
     sendError(res, err, "Delete History");
   }
 });
+
+function handleMemoryDeleteHistory(userId: string, id: string, res: any) {
+  const user = memoryUsers.find((u) => u.id === userId);
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+  const index = memoryHistoryDb.findIndex(h => h.id === id);
+  if (index === -1) return res.status(404).json({ error: "Not found" });
+  if (user.role === "admin" || memoryHistoryDb[index].userId === userId) {
+    memoryHistoryDb.splice(index, 1);
+    return res.json({ success: true });
+  }
+  return res.status(403).json({ error: "Forbidden" });
+}
 
 export default app;
